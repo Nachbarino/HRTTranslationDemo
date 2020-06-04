@@ -1,6 +1,14 @@
 const LanguageTranslatorV3 = require('ibm-watson/language-translator/v3');
 const { IamAuthenticator } = require('ibm-watson/auth');
+//const parameter = require('../config/ai-params.json');
 
+const languageTranslator = new LanguageTranslatorV3({
+  version: "2018-05-01",
+  authenticator: new IamAuthenticator({
+    apikey: "KUWXJUx939l_0sMokzdpLJzuFU1GhAWhvwtPR_Ac91oD",
+  }),
+  url: "https://api.eu-de.language-translator.watson.cloud.ibm.com/instances/8b712768-1cb8-43c5-b5d3-0583f3f777a9",
+});
 
 /**
  * Helper 
@@ -47,15 +55,33 @@ function main(params) {
       // in case of errors during the call resolve with an error message according to the pattern 
       // found in the catch clause below
 
-      resolve({
-        statusCode: 200,
-        body: {
-          text: params.text, 
-          language: "<Best Language>",
-          confidence: 0.5,
-        },
-        headers: { 'Content-Type': 'application/json' }
-      });
+      
+      languageTranslator.identify(params.text)
+        .then(identifiedLanguages => {
+
+          let identifiedLanguageByDetector="";
+          let bestConfidence=0.0;
+          for(let i =0;i<identifiedLanguages.result.languages.length;i++){
+              if(identifiedLanguages.result.languages[i].confidence>bestConfidence){
+                identifiedLanguageByDetector= identifiedLanguages.result.languages[i].language;
+                bestConfidence=identifiedLanguages.result.languages[i].confidence;
+              }
+          }
+          resolve({
+            statusCode: 200,
+            body: {
+              text: params.text, 
+              language:identifiedLanguageByDetector,
+              confidence: bestConfidence,
+            },
+            headers: { 'Content-Type': 'application/json' }
+          });
+        })
+        .catch(err => {
+          resolve(getTheErrorResponse('Error while communicating with the language service', identifiedLanguageByDetector));
+        });
+
+      
 
 
     } catch (err) {
